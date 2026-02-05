@@ -5,11 +5,10 @@ from enum import Enum
 from uuid import UUID, uuid4
 
 from sqlalchemy import DateTime, Enum as SAEnum, String, Text, func
-from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
+from sqlalchemy.dialects.postgresql import UUID as PGUUID
+from sqlalchemy.orm import Mapped, mapped_column
 
-
-class Base(DeclarativeBase):
-    pass
+from app.database import Base
 
 
 class TaskStatus(str, Enum):
@@ -23,6 +22,7 @@ class Task(Base):
     __tablename__ = "tasks"
 
     id: Mapped[UUID] = mapped_column(
+        PGUUID(as_uuid=True),
         primary_key=True,
         default=uuid4,
     )
