@@ -18,7 +18,15 @@ depends_on = None
 
 def upgrade() -> None:
     op.execute(
-        \"\"\"\n        DO $$\n        BEGIN\n            IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'task_status') THEN\n                CREATE TYPE task_status AS ENUM ('pending', 'processing', 'completed', 'failed');\n            END IF;\n        END$$;\n        \"\"\"\n    )
+        """
+        DO $$
+        BEGIN
+            IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'task_status') THEN
+                CREATE TYPE task_status AS ENUM ('pending', 'processing', 'completed', 'failed');
+            END IF;
+        END$$;
+        """
+    )
 
     task_status = sa.Enum(
         "pending",
@@ -46,4 +54,12 @@ def upgrade() -> None:
 def downgrade() -> None:
     op.drop_table("tasks")
     op.execute(
-        \"\"\"\n        DO $$\n        BEGIN\n            IF EXISTS (SELECT 1 FROM pg_type WHERE typname = 'task_status') THEN\n                DROP TYPE task_status;\n            END IF;\n        END$$;\n        \"\"\"\n    )
+        """
+        DO $$
+        BEGIN
+            IF EXISTS (SELECT 1 FROM pg_type WHERE typname = 'task_status') THEN
+                DROP TYPE task_status;
+            END IF;
+        END$$;
+        """
+    )
