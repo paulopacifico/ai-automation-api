@@ -28,7 +28,7 @@ def upgrade() -> None:
         """
     )
 
-    task_status = sa.Enum(
+    task_status = postgresql.ENUM(
         "pending",
         "processing",
         "completed",
