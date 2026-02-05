@@ -265,4 +265,4 @@ Project Link: [https://github.com/paulopacifico/ai-automation-api](https://githu
 
 ---
 
-**Built with ❤️ using FastAPI and AI**
+**Built using FastAPI and AI**
