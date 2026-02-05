@@ -15,7 +15,7 @@ docker-compose up -d postgres
 
 # Aguardar postgres estar pronto
 echo "3️⃣ Aguardando PostgreSQL..."
-sleep 5
+docker-compose exec -T postgres pg_isready -U postgres -d postgres -h localhost
 
 # Rodar migrations
 echo "4️⃣ Rodando migrations..."

@@ -34,7 +34,7 @@ shell: ## Abrir shell no container da API
 	docker-compose exec api /bin/bash
 
 psql: ## Conectar ao PostgreSQL
-	docker-compose exec postgres psql -U postgres -d automation
+	docker-compose exec postgres psql -U postgres -d postgres
 
 logs: ## Ver logs da API
 	docker-compose logs -f api
