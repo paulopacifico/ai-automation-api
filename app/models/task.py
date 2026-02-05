@@ -4,7 +4,7 @@ from datetime import datetime
 from enum import Enum
 from uuid import UUID, uuid4
 
-from sqlalchemy import DateTime, Enum as SAEnum, String, Text, func
+from sqlalchemy import DateTime, Enum as SAEnum, Integer, String, Text, func
 from sqlalchemy.dialects.postgresql import UUID as PGUUID
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -33,6 +33,9 @@ class Task(Base):
         default=TaskStatus.PENDING,
         nullable=False,
     )
+    category: Mapped[str | None] = mapped_column(String(120), nullable=True)
+    priority: Mapped[str | None] = mapped_column(String(16), nullable=True)
+    estimated_duration: Mapped[int | None] = mapped_column(Integer, nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         server_default=func.now(),

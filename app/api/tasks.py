@@ -1,5 +1,7 @@
 from uuid import UUID
 
+import logging
+
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -7,13 +9,28 @@ from sqlalchemy.orm import Session
 from app.database import get_db
 from app.models.task import Task
 from app.schemas.task import TaskCreate, TaskResponse
+from app.services.ai_classifier import AIClassifier, DEFAULT_CLASSIFICATION
 
 router = APIRouter()
+logger = logging.getLogger(__name__)
 
 
 @router.post("/tasks", response_model=TaskResponse, status_code=status.HTTP_201_CREATED)
 def create_task(payload: TaskCreate, db: Session = Depends(get_db)) -> Task:
-    task = Task(title=payload.title, description=payload.description)
+    classification = DEFAULT_CLASSIFICATION
+    try:
+        classifier = AIClassifier()
+        classification = classifier.classify_task(payload.title, payload.description)
+    except Exception:
+        logger.exception("AI classification failed; using defaults")
+
+    task = Task(
+        title=payload.title,
+        description=payload.description,
+        category=classification["category"],
+        priority=classification["priority"],
+        estimated_duration=classification["estimated_duration"],
+    )
     db.add(task)
     db.commit()
     db.refresh(task)

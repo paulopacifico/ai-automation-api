@@ -24,5 +24,8 @@ class TaskResponse(BaseModel):
     title: str
     description: str | None
     status: TaskStatus
+    category: str | None = None
+    priority: str | None = None
+    estimated_duration: int | None = None
     created_at: datetime
     updated_at: datetime
