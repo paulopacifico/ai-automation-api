@@ -29,7 +29,11 @@ class Task(Base):
     title: Mapped[str] = mapped_column(String(255), nullable=False)
     description: Mapped[str | None] = mapped_column(Text, nullable=True)
     status: Mapped[TaskStatus] = mapped_column(
-        SAEnum(TaskStatus, name="task_status"),
+        SAEnum(
+            TaskStatus,
+            name="task_status",
+            values_callable=lambda enum: [e.value for e in enum],
+        ),
         default=TaskStatus.PENDING,
         nullable=False,
     )
