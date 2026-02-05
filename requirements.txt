@@ -7,3 +7,4 @@ anthropic
 alembic
 pytest
 httpx
+pytest-cov
