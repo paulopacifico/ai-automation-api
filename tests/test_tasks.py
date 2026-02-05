@@ -157,3 +157,148 @@ def test_patch_task_partial_update(monkeypatch) -> None:
     data = resp.json()
     assert data["priority"] == "urgent"
     assert data["status"] == created["status"]
+
+
+def test_list_tasks_empty() -> None:
+    client = TestClient(app)
+    resp = client.get("/tasks")
+    assert resp.status_code == 200
+    assert resp.json() == []
+
+
+def test_list_tasks_all(monkeypatch) -> None:
+    monkeypatch.setattr(tasks_module, "AIClassifier", lambda: DummyClassifier())
+    client = TestClient(app)
+    _create_task(client, {"title": "Task A", "description": "A"})
+    _create_task(client, {"title": "Task B", "description": "B"})
+
+    resp = client.get("/tasks")
+    assert resp.status_code == 200
+    data = resp.json()
+    assert len(data) == 2
+
+
+def test_list_tasks_filter_by_status(monkeypatch) -> None:
+    monkeypatch.setattr(tasks_module, "AIClassifier", lambda: DummyClassifier())
+    client = TestClient(app)
+    task_a = _create_task(client, {"title": "Task A", "description": "A"})
+    task_b = _create_task(client, {"title": "Task B", "description": "B"})
+
+    client.patch(f"/tasks/{task_b['id']}", json={"status": "completed"})
+    resp = client.get("/tasks", params={"status": "completed"})
+    assert resp.status_code == 200
+    data = resp.json()
+    assert len(data) == 1
+    assert data[0]["id"] == task_b["id"]
+
+
+def test_list_tasks_filter_by_priority(monkeypatch) -> None:
+    monkeypatch.setattr(tasks_module, "AIClassifier", lambda: DummyClassifier())
+    client = TestClient(app)
+    task_a = _create_task(client, {"title": "Task A", "description": "A"})
+    task_b = _create_task(client, {"title": "Task B", "description": "B"})
+
+    client.patch(f"/tasks/{task_b['id']}", json={"priority": "urgent"})
+    resp = client.get("/tasks", params={"priority": "urgent"})
+    assert resp.status_code == 200
+    data = resp.json()
+    assert len(data) == 1
+    assert data[0]["id"] == task_b["id"]
+
+
+def test_list_tasks_multiple_filters(monkeypatch) -> None:
+    monkeypatch.setattr(tasks_module, "AIClassifier", lambda: DummyClassifier())
+    client = TestClient(app)
+    task_a = _create_task(client, {"title": "Task A", "description": "A"})
+    task_b = _create_task(client, {"title": "Task B", "description": "B"})
+
+    client.patch(
+        f"/tasks/{task_b['id']}",
+        json={"status": "completed", "priority": "high", "category": "development"},
+    )
+    resp = client.get(
+        "/tasks",
+        params={"status": "completed", "priority": "high", "category": "development"},
+    )
+    assert resp.status_code == 200
+    data = resp.json()
+    assert len(data) == 1
+    assert data[0]["id"] == task_b["id"]
+
+
+def test_list_tasks_pagination(monkeypatch) -> None:
+    monkeypatch.setattr(tasks_module, "AIClassifier", lambda: DummyClassifier())
+    client = TestClient(app)
+    _create_task(client, {"title": "Task A", "description": "A"})
+    _create_task(client, {"title": "Task B", "description": "B"})
+    _create_task(client, {"title": "Task C", "description": "C"})
+
+    resp = client.get("/tasks", params={"limit": 2, "offset": 1})
+    assert resp.status_code == 200
+    data = resp.json()
+    assert len(data) == 2
+
+
+def test_list_tasks_sort_asc(monkeypatch) -> None:
+    monkeypatch.setattr(tasks_module, "AIClassifier", lambda: DummyClassifier())
+    client = TestClient(app)
+    _create_task(client, {"title": "Task A", "description": "A"})
+    time.sleep(0.5)
+    _create_task(client, {"title": "Task B", "description": "B"})
+
+    resp = client.get("/tasks", params={"sort_by": "created_at", "sort_order": "asc"})
+    assert resp.status_code == 200
+    data = resp.json()
+    assert data[0]["title"] == "Task A"
+
+
+def test_list_tasks_sort_desc(monkeypatch) -> None:
+    monkeypatch.setattr(tasks_module, "AIClassifier", lambda: DummyClassifier())
+    client = TestClient(app)
+    _create_task(client, {"title": "Task A", "description": "A"})
+    time.sleep(0.5)
+    _create_task(client, {"title": "Task B", "description": "B"})
+
+    resp = client.get("/tasks", params={"sort_by": "created_at", "sort_order": "desc"})
+    assert resp.status_code == 200
+    data = resp.json()
+    assert data[0]["title"] == "Task B"
+
+
+def test_list_tasks_invalid_limit() -> None:
+    client = TestClient(app)
+    resp = client.get("/tasks", params={"limit": 1000})
+    assert resp.status_code == 422
+
+
+def test_delete_task_success(monkeypatch) -> None:
+    monkeypatch.setattr(tasks_module, "AIClassifier", lambda: DummyClassifier())
+    client = TestClient(app)
+    created = _create_task(client)
+
+    resp = client.delete(f"/tasks/{created['id']}")
+    assert resp.status_code == 204
+
+
+def test_delete_task_not_found() -> None:
+    client = TestClient(app)
+    resp = client.delete("/tasks/00000000-0000-0000-0000-000000000000")
+    assert resp.status_code == 404
+
+
+def test_delete_task_verify_deleted(monkeypatch) -> None:
+    monkeypatch.setattr(tasks_module, "AIClassifier", lambda: DummyClassifier())
+    client = TestClient(app)
+    created = _create_task(client)
+
+    resp = client.delete(f"/tasks/{created['id']}")
+    assert resp.status_code == 204
+
+    get_resp = client.get(f"/tasks/{created['id']}")
+    assert get_resp.status_code == 404
+
+
+def test_delete_task_invalid_uuid() -> None:
+    client = TestClient(app)
+    resp = client.delete("/tasks/not-a-uuid")
+    assert resp.status_code == 422
