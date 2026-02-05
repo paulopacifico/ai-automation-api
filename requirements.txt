@@ -8,3 +8,4 @@ alembic
 pytest
 httpx
 pytest-cov
+ruff
