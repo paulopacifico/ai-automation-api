@@ -36,6 +36,24 @@ def test_create_and_get_task(monkeypatch) -> None:
     assert fetched["title"] == payload["title"]
 
 
+def test_create_task_ai_failure_uses_defaults(monkeypatch) -> None:
+    class FailingClassifier:
+        def classify_task(self, title: str, description: str | None) -> dict[str, object]:
+            raise RuntimeError("AI failure")
+
+    monkeypatch.setattr(tasks_module, "AIClassifier", lambda: FailingClassifier())
+
+    client = TestClient(app)
+    payload = {"title": "Fallback test", "description": "Should use defaults"}
+
+    create_resp = client.post("/tasks", json=payload)
+    assert create_resp.status_code == 201
+    created = create_resp.json()
+    assert created["category"] == "general"
+    assert created["priority"] == "medium"
+    assert created["estimated_duration"] == 30
+
+
 def test_get_task_not_found() -> None:
     client = TestClient(app)
     resp = client.get("/tasks/00000000-0000-0000-0000-000000000000")
