@@ -1,29 +1,65 @@
 # Python
 __pycache__/
 *.py[cod]
-*.pyo
-*.pyd
-*.egg-info/
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
 .eggs/
-.pytest_cache/
-.mypy_cache/
-.ruff_cache/
-.venv/
-.venv*/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+pip-wheel-metadata/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# Virtual Environment
 venv/
+ENV/
+env/
+.venv
 
-# Environment
+# Environment Variables
 .env
-.env.*
+.env.local
+.env.*.local
 
-# Editor/OS
-.DS_Store
-.idea/
+# IDE
 .vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
 
-# Coverage
+# Testing
+.pytest_cache/
 .coverage
 htmlcov/
+.tox/
+.hypothesis/
+
+# Database
+*.db
+*.sqlite
+*.sqlite3
 
 # Docker
+docker-compose.override.yml
+
+# Logs
 *.log
+logs/
+
+# OS
+Thumbs.db
