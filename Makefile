@@ -49,3 +49,6 @@ lint: ## Rodar linter
 
 format: ## Formatar código
 	docker-compose exec api ruff format app/
+
+seed-admin: ## Criar/promover usuario admin (use: make seed-admin ADMIN_EMAIL=... ADMIN_PASSWORD=...)
+	docker-compose run --rm api python -m app.scripts.seed_admin

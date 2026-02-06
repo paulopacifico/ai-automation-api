@@ -9,3 +9,10 @@ pytest
 httpx
 pytest-cov
 ruff
+pydantic-settings
+python-jose[cryptography]
+passlib[bcrypt]
+bcrypt<4
+slowapi
+redis
+email-validator

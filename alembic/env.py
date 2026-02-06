@@ -13,7 +13,7 @@ if str(ROOT_DIR) not in sys.path:
     sys.path.append(str(ROOT_DIR))
 
 from app.database import Base  # noqa: E402
-from app.models import task  # noqa: F401,E402
+from app.models import refresh_token, task, user  # noqa: F401,E402
 
 config = context.config
 

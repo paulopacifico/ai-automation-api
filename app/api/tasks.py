@@ -6,8 +6,10 @@ from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from app.api.deps import get_current_user
 from app.database import get_db
 from app.models.task import Task, TaskStatus
+from app.models.user import User, UserRole
 from app.schemas.task import TaskCreate, TaskResponse, TaskUpdate
 from app.services.ai_classifier import AIClassifier, DEFAULT_CLASSIFICATION
 
@@ -15,8 +17,19 @@ router = APIRouter()
 logger = logging.getLogger(__name__)
 
 
+def _authorize_task(task: Task, user: User) -> None:
+    if user.role == UserRole.ADMIN:
+        return
+    if task.owner_id != user.id:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not authorized")
+
+
 @router.post("/tasks", response_model=TaskResponse, status_code=status.HTTP_201_CREATED)
-def create_task(payload: TaskCreate, db: Session = Depends(get_db)) -> Task:
+def create_task(
+    payload: TaskCreate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> Task:
     classification = DEFAULT_CLASSIFICATION
     try:
         classifier = AIClassifier()
@@ -30,6 +43,7 @@ def create_task(payload: TaskCreate, db: Session = Depends(get_db)) -> Task:
         category=classification["category"],
         priority=classification["priority"],
         estimated_duration=classification["estimated_duration"],
+        owner_id=current_user.id,
     )
     db.add(task)
     db.commit()
@@ -38,10 +52,15 @@ def create_task(payload: TaskCreate, db: Session = Depends(get_db)) -> Task:
 
 
 @router.get("/tasks/{id}", response_model=TaskResponse)
-def get_task(id: UUID, db: Session = Depends(get_db)) -> Task:
+def get_task(
+    id: UUID,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> Task:
     task = db.get(Task, id)
     if task is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Task not found")
+    _authorize_task(task, current_user)
     return task
 
 
@@ -55,8 +74,12 @@ def list_tasks(
     sort_by: str = Query("created_at", pattern="^(created_at|priority|status)$"),
     sort_order: str = Query("desc", pattern="^(asc|desc)$"),
     db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
 ) -> list[Task]:
     query = select(Task)
+
+    if current_user.role != UserRole.ADMIN:
+        query = query.where(Task.owner_id == current_user.id)
 
     if status is not None:
         query = query.where(Task.status == status)
@@ -84,10 +107,16 @@ def list_tasks(
 
 
 @router.patch("/tasks/{id}", response_model=TaskResponse)
-def update_task(id: UUID, payload: TaskUpdate, db: Session = Depends(get_db)) -> Task:
+def update_task(
+    id: UUID,
+    payload: TaskUpdate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> Task:
     task = db.get(Task, id)
     if task is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Task not found")
+    _authorize_task(task, current_user)
 
     update_data = payload.model_dump(exclude_unset=True)
     for field, value in update_data.items():
@@ -99,10 +128,15 @@ def update_task(id: UUID, payload: TaskUpdate, db: Session = Depends(get_db)) ->
 
 
 @router.delete("/tasks/{id}", status_code=status.HTTP_204_NO_CONTENT)
-def delete_task(id: UUID, db: Session = Depends(get_db)) -> Response:
+def delete_task(
+    id: UUID,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> Response:
     task = db.get(Task, id)
     if task is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Task not found")
+    _authorize_task(task, current_user)
 
     db.delete(task)
     db.commit()

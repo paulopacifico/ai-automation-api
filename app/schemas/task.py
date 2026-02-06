@@ -62,5 +62,6 @@ class TaskResponse(BaseModel):
     category: str | None = None
     priority: str | None = None
     estimated_duration: int | None = None
+    owner_id: UUID | None = None
     created_at: datetime
     updated_at: datetime

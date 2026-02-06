@@ -4,9 +4,9 @@ from datetime import datetime
 from enum import Enum
 from uuid import UUID, uuid4
 
-from sqlalchemy import DateTime, Enum as SAEnum, Integer, String, Text, func
+from sqlalchemy import DateTime, Enum as SAEnum, ForeignKey, Integer, String, Text, func
 from sqlalchemy.dialects.postgresql import UUID as PGUUID
-from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.database import Base
 
@@ -40,6 +40,11 @@ class Task(Base):
     category: Mapped[str | None] = mapped_column(String(120), nullable=True)
     priority: Mapped[str | None] = mapped_column(String(16), nullable=True)
     estimated_duration: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    owner_id: Mapped[UUID | None] = mapped_column(
+        PGUUID(as_uuid=True),
+        ForeignKey("users.id", ondelete="SET NULL"),
+        nullable=True,
+    )
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         server_default=func.now(),
@@ -51,3 +56,5 @@ class Task(Base):
         onupdate=func.now(),
         nullable=False,
     )
+
+    owner = relationship("User", back_populates="tasks")

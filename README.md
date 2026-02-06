@@ -84,32 +84,66 @@ Environment variables (via shell or `.env`):
 
 ```env
 DATABASE_URL=postgresql://user:password@localhost:5432/ai_automation
+JWT_SECRET_KEY=change-me
+ACCESS_TOKEN_EXPIRE_MINUTES=30
+REFRESH_TOKEN_EXPIRE_DAYS=7
+RATE_LIMIT_ENABLED=true
+RATE_LIMIT_DEFAULT=100/minute
+RATE_LIMIT_AUTH=10/minute
+REDIS_URL=redis://localhost:6379/0
 OPENAI_API_KEY=your_openai_api_key
 ANTHROPIC_API_KEY=your_anthropic_api_key
 ```
 
 Notes:
 
+- `JWT_SECRET_KEY` must be set to a strong value in production.
 - If both `OPENAI_API_KEY` and `ANTHROPIC_API_KEY` are set, OpenAI is used.
 - If no provider key is configured or an AI call fails, the API falls back to defaults (category `general`, priority `medium`, estimated_duration `30`).
+- Rate limiting uses in-memory storage if `REDIS_URL` is not set. Use Redis for multi-instance deployments.
+
+## Admin User Seed
+
+Create or promote an admin user locally:
+
+```bash
+ADMIN_EMAIL=admin@example.com ADMIN_PASSWORD=ChangeMe123 \
+  docker compose run --rm api python -m app.scripts.seed_admin
+```
+
+Notes:
+
+- If the user exists, the script sets role to `admin` and resets the password.
 
 ## API Endpoints
+
+### Authentication
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| `POST` | `/auth/register` | Register a user |
+| `POST` | `/auth/login` | Obtain access and refresh tokens |
+| `POST` | `/auth/refresh` | Rotate refresh token |
+| `POST` | `/auth/logout` | Revoke refresh token |
+| `GET` | `/auth/me` | Get current user profile |
 
 ### Tasks
 
 | Method | Endpoint | Description |
 |--------|----------|-------------|
-| `POST` | `/tasks` | Create a task (classification applied on create) |
-| `GET` | `/tasks/{id}` | Fetch a task by UUID |
-| `GET` | `/tasks` | List tasks with filters, sorting, pagination |
-| `PATCH` | `/tasks/{id}` | Update task fields |
-| `DELETE` | `/tasks/{id}` | Delete a task |
+| `POST` | `/tasks` | Create a task (auth required) |
+| `GET` | `/tasks/{id}` | Fetch a task by UUID (auth required) |
+| `GET` | `/tasks` | List tasks with filters, sorting, pagination (auth required) |
+| `PATCH` | `/tasks/{id}` | Update task fields (auth required) |
+| `DELETE` | `/tasks/{id}` | Delete a task (auth required) |
 
 ### Health Check
 
 | Method | Endpoint | Description |
 |--------|----------|-------------|
 | `GET` | `/health` | API health status |
+| `GET` | `/health/live` | Liveness check |
+| `GET` | `/health/ready` | Readiness check (DB and Redis) |
 
 ## API Documentation
 
@@ -120,10 +154,31 @@ Once running, explore:
 
 ## Usage Examples
 
+### Register a User
+
+```bash
+curl -X POST http://localhost:8000/auth/register \
+  -H "Content-Type: application/json" \
+  -d '{
+    "email": "user@example.com",
+    "password": "ChangeMe123"
+  }'
+```
+
+### Login and Store Token
+
+```bash
+TOKEN=$(curl -s -X POST http://localhost:8000/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{"email":"user@example.com","password":"ChangeMe123"}' | \
+  python -c 'import sys, json; print(json.load(sys.stdin)["access_token"])')
+```
+
 ### Create a Task (AI Classification)
 
 ```bash
 curl -X POST http://localhost:8000/tasks \
+  -H "Authorization: Bearer $TOKEN" \
   -H "Content-Type: application/json" \
   -d '{
     "title": "Implement user authentication",
@@ -131,32 +186,18 @@ curl -X POST http://localhost:8000/tasks \
   }'
 ```
 
-Example response:
-
-```json
-{
-  "id": "550e8400-e29b-41d4-a716-446655440000",
-  "title": "Implement user authentication",
-  "description": "Add JWT-based authentication to the API",
-  "status": "pending",
-  "category": "general",
-  "priority": "medium",
-  "estimated_duration": 30,
-  "created_at": "2024-01-01T00:00:00Z",
-  "updated_at": "2024-01-01T00:00:00Z"
-}
-```
-
 ### List Tasks with Filters
 
 ```bash
-curl "http://localhost:8000/tasks?status=pending&priority=high&sort_by=created_at&sort_order=desc&limit=10"
+curl "http://localhost:8000/tasks?status=pending&priority=high&sort_by=created_at&sort_order=desc&limit=10" \
+  -H "Authorization: Bearer $TOKEN"
 ```
 
 ### Update Task Status
 
 ```bash
 curl -X PATCH http://localhost:8000/tasks/{id} \
+  -H "Authorization: Bearer $TOKEN" \
   -H "Content-Type: application/json" \
   -d '{"status": "completed"}'
 ```
@@ -184,6 +225,7 @@ curl -X PATCH http://localhost:8000/tasks/{id} \
 | `category` | string | AI-derived on create, editable via PATCH |
 | `priority` | string | AI-derived on create, editable via PATCH |
 | `estimated_duration` | integer | Minutes (1-10080) |
+| `owner_id` | UUID | Task owner (set from authenticated user) |
 | `created_at` | datetime | Creation timestamp |
 | `updated_at` | datetime | Last update timestamp |
 
@@ -233,8 +275,8 @@ Automated checks on every push/PR:
 
 ## Roadmap
 
-- JWT authentication
-- Rate limiting
+- JWT authentication (implemented)
+- Rate limiting (implemented)
 - Redis caching
 - Webhooks for task events
 - Background job processing

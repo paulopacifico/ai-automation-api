@@ -1,0 +1,24 @@
+from __future__ import annotations
+
+from slowapi import Limiter
+from slowapi.util import get_remote_address
+
+from app.core.config import settings
+
+
+def _build_limiter() -> Limiter:
+    if settings.redis_url:
+        return Limiter(
+            key_func=get_remote_address,
+            storage_uri=settings.redis_url,
+            default_limits=[settings.rate_limit_default],
+            enabled=settings.rate_limit_enabled,
+        )
+    return Limiter(
+        key_func=get_remote_address,
+        default_limits=[settings.rate_limit_default],
+        enabled=settings.rate_limit_enabled,
+    )
+
+
+limiter = _build_limiter()
