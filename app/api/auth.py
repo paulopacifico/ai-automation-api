@@ -6,7 +6,7 @@ from fastapi import APIRouter, Depends, HTTPException, Request, status
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from app.api.deps import get_current_user
+from app.api.deps import get_current_active_user
 from app.core.config import settings
 from app.core.limiter import limiter
 from app.core.security import (
@@ -136,5 +136,5 @@ def logout(payload: LogoutRequest, db: Session = Depends(get_db)) -> None:
 
 
 @router.get("/me", response_model=UserResponse)
-def me(current_user: User = Depends(get_current_user)) -> User:
+def me(current_user: User = Depends(get_current_active_user)) -> User:
     return current_user

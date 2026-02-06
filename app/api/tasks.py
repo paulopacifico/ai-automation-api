@@ -6,7 +6,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from app.api.deps import get_current_user
+from app.api.deps import get_current_active_user
 from app.database import get_db
 from app.models.task import Task, TaskStatus
 from app.models.user import User, UserRole
@@ -28,7 +28,7 @@ def _authorize_task(task: Task, user: User) -> None:
 def create_task(
     payload: TaskCreate,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_current_active_user),
 ) -> Task:
     classification = DEFAULT_CLASSIFICATION
     try:
@@ -55,7 +55,7 @@ def create_task(
 def get_task(
     id: UUID,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_current_active_user),
 ) -> Task:
     task = db.get(Task, id)
     if task is None:
@@ -74,7 +74,7 @@ def list_tasks(
     sort_by: str = Query("created_at", pattern="^(created_at|priority|status)$"),
     sort_order: str = Query("desc", pattern="^(asc|desc)$"),
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_current_active_user),
 ) -> list[Task]:
     query = select(Task)
 
@@ -111,7 +111,7 @@ def update_task(
     id: UUID,
     payload: TaskUpdate,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_current_active_user),
 ) -> Task:
     task = db.get(Task, id)
     if task is None:
@@ -131,7 +131,7 @@ def update_task(
 def delete_task(
     id: UUID,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_current_active_user),
 ) -> Response:
     task = db.get(Task, id)
     if task is None:
