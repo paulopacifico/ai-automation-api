@@ -2,64 +2,46 @@ name: CI
 
 on:
   push:
-    branches: [ main ]
   pull_request:
-    branches: [ main ]
 
 jobs:
-  test:
+  ci:
     runs-on: ubuntu-latest
-    
-    services:
-      postgres:
-        image: postgres:16
-        env:
-          POSTGRES_USER: postgres
-          POSTGRES_PASSWORD: postgres
-          POSTGRES_DB: postgres  # DB padrão
-        ports:
-          - 5432:5432
-        options: >-
-          --health-cmd pg_isready
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
 
     steps:
-    - uses: actions/checkout@v3
-    
-    - name: Set up Python
-      uses: actions/setup-python@v4
-      with:
-        python-version: '3.11'
-    
-    - name: Install dependencies
-      run: |
-        python -m pip install --upgrade pip
-        pip install -r requirements.txt
-    
-    - name: Create fresh database
-      env:
-        PGPASSWORD: postgres
-      run: |
-        # Dropar banco se existir e criar limpo
-        psql -h localhost -U postgres -c "DROP DATABASE IF EXISTS automation_test;"
-        psql -h localhost -U postgres -c "CREATE DATABASE automation_test;"
-    
-    - name: Run migrations
-      env:
-        DATABASE_URL: postgresql://postgres:postgres@localhost:5432/automation_test
-      run: |
-        alembic upgrade head
-    
-    - name: Run tests
-      env:
-        DATABASE_URL: postgresql://postgres:postgres@localhost:5432/automation_test
-        PYTHONPATH: /home/runner/work/ai-automation-api/ai-automation-api
-      run: |
-        pytest -v --cov=app --cov-report=term-missing
+      - name: Checkout
+        uses: actions/checkout@v4
 
-    - name: Lint with ruff (optional)
-      run: |
-        pip install ruff
-        ruff check app/ || true
+      - name: Build Docker image
+        run: docker build -t ai-automation-api .
+
+      - name: Start database
+        run: docker compose up -d postgres
+
+      - name: Wait for database
+        run: |
+          for i in {1..20}; do
+            if docker compose exec -T postgres pg_isready -U postgres; then
+              exit 0
+            fi
+            sleep 1
+          done
+          exit 1
+
+      - name: Run migrations
+        run: docker compose run --rm -T -v ${{ github.workspace }}:/app api alembic upgrade head
+
+      - name: Run tests
+        run: >
+          docker compose run --rm -T
+          -v ${{ github.workspace }}:/app
+          -e PYTHONPATH=/app
+          -e DATABASE_URL=postgresql://postgres:postgres@postgres:5432/postgres
+          api pytest -q
+
+      - name: Lint
+        run: docker compose run --rm -T -v ${{ github.workspace }}:/app api ruff check app/
+
+      - name: Shutdown
+        if: always()
+        run: docker compose down -v
