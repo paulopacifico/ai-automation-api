@@ -3,16 +3,28 @@ from __future__ import annotations
 from datetime import datetime
 from uuid import UUID
 
-from typing import Literal
+from typing import Literal, Optional
 
-from pydantic import BaseModel, ConfigDict, field_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 from app.models.task import TaskStatus
 
 
 class TaskCreate(BaseModel):
-    title: str
-    description: str | None = None
+    title: str = Field(..., min_length=1, max_length=200)
+    description: Optional[str] = Field(None, max_length=2000)
+    category: Optional[str] = None
+    priority: Optional[str] = None
+    estimated_duration: Optional[int] = Field(None, ge=1, le=10080)
+
+    @field_validator("estimated_duration")
+    @classmethod
+    def _validate_estimated_duration(cls, value: int | None) -> int | None:
+        if value is None:
+            return None
+        if value < 1 or value > 10080:
+            raise ValueError("estimated_duration must be between 1 and 10080 minutes")
+        return value
 
 
 class TaskUpdate(BaseModel):
