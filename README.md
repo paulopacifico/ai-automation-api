@@ -1,35 +1,113 @@
-# AI Automation API
+# 🤖 AI Automation API
 
-Backend API for AI-assisted task automation and classification.
+> Backend SaaS API for intelligent workflow orchestration with AI-powered task classification
 
-## Features
-- REST API with FastAPI
-- PostgreSQL persistence via SQLAlchemy
-- AI-powered task classification (category, priority, duration)
-- Docker Compose for local development
+[![CI](https://github.com/paulopacifico/ai-automation-api/actions/workflows/ci.yml/badge.svg)](https://github.com/paulopacifico/ai-automation-api/actions)
+[![Python 3.11](https://img.shields.io/badge/python-3.11-blue.svg)](https://www.python.org/downloads/)
+[![FastAPI](https://img.shields.io/badge/FastAPI-0.100+-green.svg)](https://fastapi.tiangolo.com)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-## API Endpoints
+## ✨ Features
+
+- 🎯 **Complete CRUD** for task management
+- 🤖 **AI-powered classification** - automatic category and priority assignment
+- 🔍 **Advanced filtering** - by status, category, priority
+- 📄 **Pagination & sorting** - efficient data retrieval
+- ✅ **Comprehensive testing** - 24 automated tests with 72% coverage
+- 🐳 **Docker-ready** - production-grade containerization
+- 🔄 **Database migrations** - Alembic for schema versioning
+- 🚀 **CI/CD pipeline** - automated testing and validation
+- 📊 **API documentation** - auto-generated with Swagger/ReDoc
+
+## 🛠️ Tech Stack
+
+| Component | Technology |
+|-----------|-----------|
+| Framework | FastAPI 0.100+ |
+| Language | Python 3.11 |
+| Database | PostgreSQL 15 |
+| ORM | SQLAlchemy 2.0 |
+| Migrations | Alembic |
+| Testing | pytest + pytest-cov |
+| Linting | Ruff |
+| Containerization | Docker + Docker Compose |
+| CI/CD | GitHub Actions |
+
+## 🚀 Quick Start
+
+### Prerequisites
+
+- Docker & Docker Compose
+- Python 3.11+ (for local development)
+
+### Running with Docker (Recommended)
+
+```bash
+# Clone the repository
+git clone https://github.com/paulopacifico/ai-automation-api.git
+cd ai-automation-api
+
+# Start the services
+docker compose up --build
+
+# API will be available at http://localhost:8000
+```
+
+### Local Development
+
+```bash
+# Create virtual environment
+python -m venv venv
+source venv/bin/activate  # On Windows: venv\Scripts\activate
+
+# Install dependencies
+pip install -r requirements.txt
+
+# Set up database (requires PostgreSQL running)
+alembic upgrade head
+
+# Run the server
+uvicorn app.main:app --reload
+```
+
+## 📡 API Endpoints
+
+### Tasks
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| `POST` | `/tasks` | Create a new task (with AI classification) |
+| `GET` | `/tasks/{id}` | Get task by UUID |
+| `GET` | `/tasks` | List tasks with filters & pagination |
+| `PATCH` | `/tasks/{id}` | Update task fields |
+| `DELETE` | `/tasks/{id}` | Delete a task |
+
 ### Health Check
-```http
-GET /health
-```
-Response:
-```json
-{
-  "status": "ok"
-}
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| `GET` | `/health` | API health status |
+
+## 📖 API Documentation
+
+Once the server is running, access:
+
+- **Swagger UI**: http://localhost:8000/docs
+- **ReDoc**: http://localhost:8000/redoc
+
+## 🎯 Usage Examples
+
+### Create a Task (with AI Classification)
+
+```bash
+curl -X POST http://localhost:8000/tasks \
+  -H "Content-Type: application/json" \
+  -d '{
+    "title": "Implement user authentication",
+    "description": "Add JWT-based authentication to the API"
+  }'
 ```
 
-### Create Task
-```http
-POST /tasks
-Content-Type: application/json
-
-{
-  "title": "Implement user authentication",
-  "description": "Add JWT-based authentication to the API"
-}
-```
 Response:
 ```json
 {
@@ -39,101 +117,148 @@ Response:
   "status": "pending",
   "category": "development",
   "priority": "high",
-  "estimated_duration": 180,
-  "created_at": "2026-02-05T10:30:00Z",
-  "updated_at": "2026-02-05T10:30:00Z"
+  "estimated_duration": 240,
+  "created_at": "2026-02-05T15:00:00Z",
+  "updated_at": "2026-02-05T15:00:00Z"
 }
 ```
 
-### Get Task by ID
-```http
-GET /tasks/{id}
+### List Tasks with Filters
+
+```bash
+# Filter by status and priority, sorted by creation date
+curl "http://localhost:8000/tasks?status=pending&priority=high&sort_by=created_at&sort_order=desc&limit=10"
 ```
 
-### List Tasks (filters, pagination, sorting)
-```http
-GET /tasks?status=pending&category=development&priority=high&limit=20&offset=0&sort_by=created_at&sort_order=desc
+### Update Task Status
+
+```bash
+curl -X PATCH http://localhost:8000/tasks/{id} \
+  -H "Content-Type: application/json" \
+  -d '{"status": "completed"}'
 ```
 
-Query params:
-- `status`: `pending | processing | completed | failed`
-- `category`: free text
-- `priority`: `low | medium | high | urgent`
-- `limit`: 1..100 (default 50)
-- `offset`: >= 0 (default 0)
-- `sort_by`: `created_at | priority | status` (default `created_at`)
-- `sort_order`: `asc | desc` (default `desc`)
+### Delete a Task
 
-### Update Task (partial)
-```http
-PATCH /tasks/{id}
-```
-Example:
-```json
-{
-  "status": "processing",
-  "priority": "high"
-}
+```bash
+curl -X DELETE http://localhost:8000/tasks/{id}
 ```
 
-### Delete Task
-```http
-DELETE /tasks/{id}
+## 🧪 Testing
+
+```bash
+# Run all tests
+pytest
+
+# Run with coverage report
+pytest --cov=app --cov-report=html
+
+# Run specific test file
+pytest tests/test_tasks.py -v
+
+# Run linting
+ruff check app/
 ```
-Response: `204 No Content`
 
-## Tech Stack
-- Python 3.11
-- FastAPI
-- SQLAlchemy
-- PostgreSQL
-- OpenAI / Anthropic
-- Docker
+## 📊 Query Parameters (GET /tasks)
 
-## Getting Started (Docker)
-1. Set environment variables (example below)
-2. Start services:
-   ```bash
-   docker compose up --build
-   ```
-3. API: `http://localhost:8000`
-4. Docs: `http://localhost:8000/docs`
+| Parameter | Type | Description | Default |
+|-----------|------|-------------|---------|
+| `status` | string | Filter by status: `pending`, `processing`, `completed`, `failed` | - |
+| `category` | string | Filter by category | - |
+| `priority` | string | Filter by priority: `low`, `medium`, `high`, `urgent` | - |
+| `limit` | integer | Max results per page (1-100) | 50 |
+| `offset` | integer | Number of records to skip | 0 |
+| `sort_by` | string | Sort field: `created_at`, `priority`, `status` | `created_at` |
+| `sort_order` | string | Sort direction: `asc`, `desc` | `desc` |
 
-## Environment Variables
-Required:
-- `DATABASE_URL`
-- `OPENAI_API_KEY` or `ANTHROPIC_API_KEY`
+## 🗃️ Database Schema
 
-Optional:
-- `APP_ENV`
-- `LOG_LEVEL`
-- `API_TIMEOUT`
-- `MAX_RETRIES`
+### Task Model
 
-## Project Structure
+| Field | Type | Description |
+|-------|------|-------------|
+| `id` | UUID | Primary key (auto-generated) |
+| `title` | String(200) | Task title (required) |
+| `description` | String(2000) | Task description (optional) |
+| `status` | Enum | `pending`, `processing`, `completed`, `failed` |
+| `category` | String | Task category |
+| `priority` | String | Task priority |
+| `estimated_duration` | Integer | Duration in minutes (1-10080) |
+| `created_at` | DateTime | Creation timestamp |
+| `updated_at` | DateTime | Last update timestamp |
+
+## 🔧 Configuration
+
+Environment variables (`.env`):
+
+```env
+DATABASE_URL=postgresql://user:password@localhost:5432/ai_automation
+OPENAI_API_KEY=your_api_key_here  # For AI classification
+```
+
+## 🏗️ Project Structure
+
 ```
 ai-automation-api/
 ├── app/
-│   ├── main.py
-│   ├── database.py
 │   ├── api/
-│   │   └── tasks.py
+│   │   └── tasks.py          # Task endpoints
 │   ├── models/
-│   │   └── task.py
+│   │   └── task.py           # SQLAlchemy models
 │   ├── schemas/
-│   │   └── task.py
-│   └── services/
-│       └── ai_classifier.py
-├── docker-compose.yml
-├── Dockerfile
-├── requirements.txt
-└── README.md
+│   │   └── task.py           # Pydantic schemas
+│   ├── services/
+│   │   └── ai_classifier.py  # AI classification logic
+│   ├── database.py           # Database configuration
+│   └── main.py               # FastAPI app
+├── tests/
+│   └── test_tasks.py         # Test suite
+├── alembic/                  # Database migrations
+├── docker-compose.yml        # Docker services
+├── Dockerfile                # Container definition
+└── requirements.txt          # Python dependencies
 ```
 
-## AI Classification
-Tasks are automatically classified from title and description:
-- `category`: task domain (e.g., development, docs, security)
-- `priority`: low | medium | high | urgent
-- `estimated_duration`: minutes
+## 🚦 CI/CD Pipeline
 
-If the AI provider fails, default values are used and the task is still created.
+Automated workflows on every PR:
+
+- ✅ Docker build validation
+- ✅ Database migrations test
+- ✅ 24 automated tests
+- ✅ Code linting (Ruff)
+- ✅ Coverage reporting
+
+## 🤝 Contributing
+
+1. Fork the repository
+2. Create a feature branch (`git checkout -b feature/amazing-feature`)
+3. Commit your changes (`git commit -m 'Add amazing feature'`)
+4. Push to the branch (`git push origin feature/amazing-feature`)
+5. Open a Pull Request
+
+## 📝 License
+
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
+## 🎯 Roadmap
+
+- [ ] JWT Authentication
+- [ ] Rate Limiting
+- [ ] Redis Caching
+- [ ] Webhooks for task events
+- [ ] Background job processing
+- [ ] Multi-tenancy support
+- [ ] GraphQL API
+- [ ] Real-time updates (WebSockets)
+
+## 📧 Contact
+
+Paulo Pacifico - [@paulopacifico](https://github.com/paulopacifico)
+
+Project Link: [https://github.com/paulopacifico/ai-automation-api](https://github.com/paulopacifico/ai-automation-api)
+
+---
+
+**Built with ❤️ using FastAPI**
