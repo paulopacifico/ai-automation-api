@@ -3,7 +3,7 @@ import time
 
 from fastapi.testclient import TestClient
 
-import app.api.tasks as tasks_module
+import app.services.task_classification as classification_module
 
 
 class DummyClassifier:
@@ -24,7 +24,7 @@ def _create_task(client: TestClient, headers: dict[str, str], payload: dict | No
 
 
 def test_create_and_get_task(monkeypatch, client: TestClient, auth_headers: dict[str, str]) -> None:
-    monkeypatch.setattr(tasks_module, "AIClassifier", lambda: DummyClassifier())
+    monkeypatch.setattr(classification_module, "AIClassifier", lambda: DummyClassifier())
 
     payload = {"title": "Write tests", "description": "Add pytest coverage"}
     created = _create_task(client, auth_headers, payload)
@@ -47,7 +47,7 @@ def test_create_task_ai_failure_uses_defaults(monkeypatch, client: TestClient, a
         def classify_task(self, title: str, description: str | None) -> dict[str, object]:
             raise RuntimeError("AI failure")
 
-    monkeypatch.setattr(tasks_module, "AIClassifier", lambda: FailingClassifier())
+    monkeypatch.setattr(classification_module, "AIClassifier", lambda: FailingClassifier())
 
     payload = {"title": "Fallback test", "description": "Should use defaults"}
 
@@ -66,7 +66,7 @@ def test_get_task_not_found(client: TestClient, auth_headers: dict[str, str]) ->
 
 def test_patch_task_status_success(monkeypatch, client: TestClient, auth_headers: dict[str, str]) -> None:
     """Atualiza apenas o status de uma task existente."""
-    monkeypatch.setattr(tasks_module, "AIClassifier", lambda: DummyClassifier())
+    monkeypatch.setattr(classification_module, "AIClassifier", lambda: DummyClassifier())
 
     created = _create_task(client, auth_headers)
 
@@ -78,7 +78,7 @@ def test_patch_task_status_success(monkeypatch, client: TestClient, auth_headers
 
 def test_patch_task_multiple_fields(monkeypatch, client: TestClient, auth_headers: dict[str, str]) -> None:
     """Atualiza status, priority e estimated_duration juntos."""
-    monkeypatch.setattr(tasks_module, "AIClassifier", lambda: DummyClassifier())
+    monkeypatch.setattr(classification_module, "AIClassifier", lambda: DummyClassifier())
 
     created = _create_task(client, auth_headers)
 
@@ -103,7 +103,7 @@ def test_patch_task_not_found(client: TestClient, auth_headers: dict[str, str]) 
 
 def test_patch_task_invalid_status(monkeypatch, client: TestClient, auth_headers: dict[str, str]) -> None:
     """Retorna 422 para status fora do enum."""
-    monkeypatch.setattr(tasks_module, "AIClassifier", lambda: DummyClassifier())
+    monkeypatch.setattr(classification_module, "AIClassifier", lambda: DummyClassifier())
 
     created = _create_task(client, auth_headers)
 
@@ -113,7 +113,7 @@ def test_patch_task_invalid_status(monkeypatch, client: TestClient, auth_headers
 
 def test_patch_task_invalid_estimated_duration(monkeypatch, client: TestClient, auth_headers: dict[str, str]) -> None:
     """Retorna 422 para duração negativa ou > 10080."""
-    monkeypatch.setattr(tasks_module, "AIClassifier", lambda: DummyClassifier())
+    monkeypatch.setattr(classification_module, "AIClassifier", lambda: DummyClassifier())
 
     created = _create_task(client, auth_headers)
 
@@ -134,7 +134,7 @@ def test_patch_task_invalid_estimated_duration(monkeypatch, client: TestClient, 
 
 def test_patch_task_updates_timestamp(monkeypatch, client: TestClient, auth_headers: dict[str, str]) -> None:
     """Verifica que updated_at foi atualizado."""
-    monkeypatch.setattr(tasks_module, "AIClassifier", lambda: DummyClassifier())
+    monkeypatch.setattr(classification_module, "AIClassifier", lambda: DummyClassifier())
 
     created = _create_task(client, auth_headers)
 
@@ -149,7 +149,7 @@ def test_patch_task_updates_timestamp(monkeypatch, client: TestClient, auth_head
 
 def test_patch_task_partial_update(monkeypatch, client: TestClient, auth_headers: dict[str, str]) -> None:
     """Campos não enviados permanecem inalterados."""
-    monkeypatch.setattr(tasks_module, "AIClassifier", lambda: DummyClassifier())
+    monkeypatch.setattr(classification_module, "AIClassifier", lambda: DummyClassifier())
 
     created = _create_task(client, auth_headers)
 
@@ -167,7 +167,7 @@ def test_list_tasks_empty(client: TestClient, auth_headers: dict[str, str]) -> N
 
 
 def test_list_tasks_all(monkeypatch, client: TestClient, auth_headers: dict[str, str]) -> None:
-    monkeypatch.setattr(tasks_module, "AIClassifier", lambda: DummyClassifier())
+    monkeypatch.setattr(classification_module, "AIClassifier", lambda: DummyClassifier())
     _create_task(client, auth_headers, {"title": "Task A", "description": "A"})
     _create_task(client, auth_headers, {"title": "Task B", "description": "B"})
 
@@ -178,7 +178,7 @@ def test_list_tasks_all(monkeypatch, client: TestClient, auth_headers: dict[str,
 
 
 def test_list_tasks_filter_by_status(monkeypatch, client: TestClient, auth_headers: dict[str, str]) -> None:
-    monkeypatch.setattr(tasks_module, "AIClassifier", lambda: DummyClassifier())
+    monkeypatch.setattr(classification_module, "AIClassifier", lambda: DummyClassifier())
     _create_task(client, auth_headers, {"title": "Task A", "description": "A"})
     task_b = _create_task(client, auth_headers, {"title": "Task B", "description": "B"})
 
@@ -191,7 +191,7 @@ def test_list_tasks_filter_by_status(monkeypatch, client: TestClient, auth_heade
 
 
 def test_list_tasks_filter_by_priority(monkeypatch, client: TestClient, auth_headers: dict[str, str]) -> None:
-    monkeypatch.setattr(tasks_module, "AIClassifier", lambda: DummyClassifier())
+    monkeypatch.setattr(classification_module, "AIClassifier", lambda: DummyClassifier())
     _create_task(client, auth_headers, {"title": "Task A", "description": "A"})
     task_b = _create_task(client, auth_headers, {"title": "Task B", "description": "B"})
 
@@ -204,7 +204,7 @@ def test_list_tasks_filter_by_priority(monkeypatch, client: TestClient, auth_hea
 
 
 def test_list_tasks_multiple_filters(monkeypatch, client: TestClient, auth_headers: dict[str, str]) -> None:
-    monkeypatch.setattr(tasks_module, "AIClassifier", lambda: DummyClassifier())
+    monkeypatch.setattr(classification_module, "AIClassifier", lambda: DummyClassifier())
     _create_task(client, auth_headers, {"title": "Task A", "description": "A"})
     task_b = _create_task(client, auth_headers, {"title": "Task B", "description": "B"})
 
@@ -225,7 +225,7 @@ def test_list_tasks_multiple_filters(monkeypatch, client: TestClient, auth_heade
 
 
 def test_list_tasks_pagination(monkeypatch, client: TestClient, auth_headers: dict[str, str]) -> None:
-    monkeypatch.setattr(tasks_module, "AIClassifier", lambda: DummyClassifier())
+    monkeypatch.setattr(classification_module, "AIClassifier", lambda: DummyClassifier())
     _create_task(client, auth_headers, {"title": "Task A", "description": "A"})
     _create_task(client, auth_headers, {"title": "Task B", "description": "B"})
     _create_task(client, auth_headers, {"title": "Task C", "description": "C"})
@@ -237,7 +237,7 @@ def test_list_tasks_pagination(monkeypatch, client: TestClient, auth_headers: di
 
 
 def test_list_tasks_sort_asc(monkeypatch, client: TestClient, auth_headers: dict[str, str]) -> None:
-    monkeypatch.setattr(tasks_module, "AIClassifier", lambda: DummyClassifier())
+    monkeypatch.setattr(classification_module, "AIClassifier", lambda: DummyClassifier())
     _create_task(client, auth_headers, {"title": "Task A", "description": "A"})
     time.sleep(0.5)
     _create_task(client, auth_headers, {"title": "Task B", "description": "B"})
@@ -249,7 +249,7 @@ def test_list_tasks_sort_asc(monkeypatch, client: TestClient, auth_headers: dict
 
 
 def test_list_tasks_sort_desc(monkeypatch, client: TestClient, auth_headers: dict[str, str]) -> None:
-    monkeypatch.setattr(tasks_module, "AIClassifier", lambda: DummyClassifier())
+    monkeypatch.setattr(classification_module, "AIClassifier", lambda: DummyClassifier())
     _create_task(client, auth_headers, {"title": "Task A", "description": "A"})
     time.sleep(0.5)
     _create_task(client, auth_headers, {"title": "Task B", "description": "B"})
@@ -266,7 +266,7 @@ def test_list_tasks_invalid_limit(client: TestClient, auth_headers: dict[str, st
 
 
 def test_delete_task_success(monkeypatch, client: TestClient, auth_headers: dict[str, str]) -> None:
-    monkeypatch.setattr(tasks_module, "AIClassifier", lambda: DummyClassifier())
+    monkeypatch.setattr(classification_module, "AIClassifier", lambda: DummyClassifier())
     created = _create_task(client, auth_headers)
 
     resp = client.delete(f"/tasks/{created['id']}", headers=auth_headers)
@@ -279,7 +279,7 @@ def test_delete_task_not_found(client: TestClient, auth_headers: dict[str, str])
 
 
 def test_delete_task_verify_deleted(monkeypatch, client: TestClient, auth_headers: dict[str, str]) -> None:
-    monkeypatch.setattr(tasks_module, "AIClassifier", lambda: DummyClassifier())
+    monkeypatch.setattr(classification_module, "AIClassifier", lambda: DummyClassifier())
     created = _create_task(client, auth_headers)
 
     resp = client.delete(f"/tasks/{created['id']}", headers=auth_headers)

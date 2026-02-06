@@ -6,8 +6,22 @@ services:
       - ENV=development
       - JWT_SECRET_KEY=change-me
       - REDIS_URL=redis://redis:6379/0
+      - TASK_CLASSIFICATION_MODE=async
     ports:
       - "8000:8000"
+    depends_on:
+      - postgres
+      - redis
+
+  worker:
+    build: .
+    command: rq worker task-classification --url redis://redis:6379/0
+    environment:
+      - DATABASE_URL=postgresql://postgres:postgres@postgres:5432/postgres
+      - ENV=development
+      - JWT_SECRET_KEY=change-me
+      - REDIS_URL=redis://redis:6379/0
+      - TASK_CLASSIFICATION_MODE=async
     depends_on:
       - postgres
       - redis

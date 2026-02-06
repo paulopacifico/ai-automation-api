@@ -6,6 +6,7 @@ os.environ.setdefault(
     "postgresql://postgres:postgres@localhost:5432/automation_test",
 )
 os.environ.setdefault("RATE_LIMIT_ENABLED", "false")
+os.environ["TASK_CLASSIFICATION_MODE"] = "sync"
 
 import pytest
 from fastapi.testclient import TestClient

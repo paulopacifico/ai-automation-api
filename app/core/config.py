@@ -16,6 +16,9 @@ class Settings(BaseSettings):
     rate_limit_default: str = Field("100/minute", alias="RATE_LIMIT_DEFAULT")
     rate_limit_auth: str = Field("10/minute", alias="RATE_LIMIT_AUTH")
     redis_url: str | None = Field(None, alias="REDIS_URL")
+    task_classification_mode: str = Field("async", alias="TASK_CLASSIFICATION_MODE")
+    task_queue_name: str = Field("task-classification", alias="TASK_QUEUE_NAME")
+    task_queue_retry_max: int = Field(3, alias="TASK_QUEUE_RETRY_MAX")
     environment: str = Field("development", alias="ENV")
 
     def is_production(self) -> bool:
@@ -24,6 +27,10 @@ class Settings(BaseSettings):
     def validate_security(self) -> None:
         if self.is_production() and self.jwt_secret_key == "change-me":
             raise ValueError("JWT_SECRET_KEY must be set in production")
+        if self.task_classification_mode not in {"sync", "async"}:
+            raise ValueError("TASK_CLASSIFICATION_MODE must be 'sync' or 'async'")
+        if self.task_classification_mode == "async" and not self.redis_url:
+            raise ValueError("REDIS_URL must be set when TASK_CLASSIFICATION_MODE=async")
 
 
 settings = Settings()

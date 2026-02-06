@@ -11,7 +11,10 @@ from app.database import get_db
 from app.models.task import Task, TaskStatus
 from app.models.user import User, UserRole
 from app.schemas.task import TaskCreate, TaskResponse, TaskUpdate
-from app.services.ai_classifier import AIClassifier, DEFAULT_CLASSIFICATION
+from app.services.ai_classifier import DEFAULT_CLASSIFICATION
+from app.services.task_classification import classify_task_record
+from app.services.task_queue import enqueue_task_classification
+from app.core.config import settings
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
@@ -30,24 +33,32 @@ def create_task(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
 ) -> Task:
-    classification = DEFAULT_CLASSIFICATION
-    try:
-        classifier = AIClassifier()
-        classification = classifier.classify_task(payload.title, payload.description)
-    except Exception:
-        logger.exception("AI classification failed; using defaults")
-
     task = Task(
         title=payload.title,
         description=payload.description,
-        category=classification["category"],
-        priority=classification["priority"],
-        estimated_duration=classification["estimated_duration"],
+        category=DEFAULT_CLASSIFICATION["category"],
+        priority=DEFAULT_CLASSIFICATION["priority"],
+        estimated_duration=DEFAULT_CLASSIFICATION["estimated_duration"],
+        status=TaskStatus.PROCESSING if settings.task_classification_mode == "async" else TaskStatus.PENDING,
         owner_id=current_user.id,
     )
     db.add(task)
     db.commit()
     db.refresh(task)
+
+    if settings.task_classification_mode == "sync":
+        classify_task_record(db, task)
+        db.commit()
+        db.refresh(task)
+    else:
+        try:
+            enqueue_task_classification(str(task.id))
+        except Exception:
+            logger.exception("Task queue unavailable; classifying synchronously")
+            classify_task_record(db, task)
+            db.commit()
+            db.refresh(task)
+
     return task
 
 

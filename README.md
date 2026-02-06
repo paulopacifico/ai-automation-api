@@ -91,6 +91,9 @@ RATE_LIMIT_ENABLED=true
 RATE_LIMIT_DEFAULT=100/minute
 RATE_LIMIT_AUTH=10/minute
 REDIS_URL=redis://localhost:6379/0
+TASK_CLASSIFICATION_MODE=async
+TASK_QUEUE_NAME=task-classification
+TASK_QUEUE_RETRY_MAX=3
 OPENAI_API_KEY=your_openai_api_key
 ANTHROPIC_API_KEY=your_anthropic_api_key
 ```
@@ -101,6 +104,22 @@ Notes:
 - If both `OPENAI_API_KEY` and `ANTHROPIC_API_KEY` are set, OpenAI is used.
 - If no provider key is configured or an AI call fails, the API falls back to defaults (category `general`, priority `medium`, estimated_duration `30`).
 - Rate limiting uses in-memory storage if `REDIS_URL` is not set. Use Redis for multi-instance deployments.
+- `TASK_CLASSIFICATION_MODE=async` uses Redis + RQ worker. Use `sync` for local debug and tests.
+
+## Background Worker
+
+Run API + worker with Docker Compose:
+
+```bash
+docker compose up --build
+```
+
+Run worker only:
+
+```bash
+docker compose up -d worker
+docker compose logs -f worker
+```
 
 ## Admin User Seed
 
@@ -244,9 +263,10 @@ ruff check app/
 ai-automation-api/
 ├── app/
 │   ├── api/                  # Route handlers
+│   ├── jobs/                 # RQ background jobs
 │   ├── models/               # SQLAlchemy models
 │   ├── schemas/              # Pydantic schemas
-│   ├── services/             # AI classification logic
+│   ├── services/             # AI services and queue integration
 │   ├── database.py           # DB configuration
 │   └── main.py               # FastAPI app
 ├── tests/                    # Test suite
@@ -277,9 +297,9 @@ Automated checks on every push/PR:
 
 - JWT authentication (implemented)
 - Rate limiting (implemented)
+- Background job processing (implemented with Redis + RQ)
 - Redis caching
 - Webhooks for task events
-- Background job processing
 - Multi-tenancy support
 - GraphQL API
 - Real-time updates (WebSockets)

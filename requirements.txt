@@ -15,4 +15,5 @@ passlib[bcrypt]
 bcrypt<4
 slowapi
 redis
+rq
 email-validator

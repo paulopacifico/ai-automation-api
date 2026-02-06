@@ -1,4 +1,4 @@
-.PHONY: help up down reset test migrate shell logs clean seed-admin
+.PHONY: help up down reset test migrate shell logs clean seed-admin worker-up worker-logs
 
 help: ## Mostrar este help
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | sort | awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-15s\033[0m %s\n", $$1, $$2}'
@@ -38,6 +38,12 @@ psql: ## Conectar ao PostgreSQL
 
 logs: ## Ver logs da API
 	docker-compose logs -f api
+
+worker-up: ## Subir worker de classificacao
+	docker-compose up -d worker
+
+worker-logs: ## Ver logs do worker
+	docker-compose logs -f worker
 
 clean: ## Limpar caches Python
 	find . -type d -name __pycache__ -exec rm -rf {} +
