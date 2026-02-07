@@ -23,6 +23,15 @@ def _create_task(client: TestClient, headers: dict[str, str], payload: dict | No
     return response.json()
 
 
+def _auth_headers_for(client: TestClient, email: str, password: str = "ChangeMe123") -> dict[str, str]:
+    register = client.post("/auth/register", json={"email": email, "password": password})
+    assert register.status_code == 201
+    login = client.post("/auth/login", json={"email": email, "password": password})
+    assert login.status_code == 200
+    token = login.json()["access_token"]
+    return {"Authorization": f"Bearer {token}"}
+
+
 def test_create_and_get_task(monkeypatch, client: TestClient, auth_headers: dict[str, str]) -> None:
     monkeypatch.setattr(classification_module, "AIClassifier", lambda: DummyClassifier())
 
@@ -62,6 +71,22 @@ def test_create_task_ai_failure_uses_defaults(monkeypatch, client: TestClient, a
 def test_get_task_not_found(client: TestClient, auth_headers: dict[str, str]) -> None:
     resp = client.get("/tasks/00000000-0000-0000-0000-000000000000", headers=auth_headers)
     assert resp.status_code == 404
+
+
+def test_get_task_from_other_user_returns_403(
+    monkeypatch,
+    client: TestClient,
+    auth_headers: dict[str, str],
+) -> None:
+    monkeypatch.setattr(classification_module, "AIClassifier", lambda: DummyClassifier())
+
+    created = _create_task(client, auth_headers, {"title": "Owner task", "description": "private"})
+    other_user_headers = _auth_headers_for(client, "other-user@example.com")
+
+    resp = client.get(f"/tasks/{created['id']}", headers=other_user_headers)
+
+    assert resp.status_code == 403
+    assert resp.json()["detail"] == "Not authorized"
 
 
 def test_patch_task_status_success(monkeypatch, client: TestClient, auth_headers: dict[str, str]) -> None:
