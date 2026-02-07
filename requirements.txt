@@ -2,8 +2,7 @@ fastapi
 uvicorn
 sqlalchemy
 psycopg2-binary
-openai
-anthropic
+huggingface_hub
 alembic
 pytest
 httpx

@@ -9,7 +9,7 @@ Backend API for AI-assisted task orchestration. Create tasks, auto-classify them
 
 ## Overview
 
-This project demonstrates a production-style backend with clean domain boundaries, AI provider integration, and a reproducible development workflow. It is intentionally scoped but covers the core concerns of a SaaS API: persistence, validation, observability through logs, and automated quality checks.
+This project demonstrates a production-style backend with clean domain boundaries, Hugging Face integration, and a reproducible development workflow. It is intentionally scoped but covers the core concerns of a SaaS API: persistence, validation, observability through logs, and automated quality checks.
 
 ## Key Capabilities
 
@@ -22,7 +22,7 @@ This project demonstrates a production-style backend with clean domain boundarie
 
 ## Engineering Highlights
 
-- Provider-agnostic AI classification (OpenAI or Anthropic) with safe fallbacks
+- Hugging Face zero-shot classification with safe fallbacks
 - Clear API/data boundaries using FastAPI, Pydantic, and SQLAlchemy
 - Reproducible development stack with Docker Compose
 - CI validates build, migrations, tests, and lint on every push/PR
@@ -94,15 +94,17 @@ REDIS_URL=redis://localhost:6379/0
 TASK_CLASSIFICATION_MODE=async
 TASK_QUEUE_NAME=task-classification
 TASK_QUEUE_RETRY_MAX=3
-OPENAI_API_KEY=your_openai_api_key
-ANTHROPIC_API_KEY=your_anthropic_api_key
+HUGGINGFACEHUB_API_TOKEN=your_huggingface_token
+HF_MODEL_ID=MoritzLaurer/mDeBERTa-v3-base-mnli-xnli
+HF_TIMEOUT_SECONDS=20
+HF_MAX_RETRIES=3
 ```
 
 Notes:
 
 - `JWT_SECRET_KEY` must be set to a strong value in production.
-- If both `OPENAI_API_KEY` and `ANTHROPIC_API_KEY` are set, OpenAI is used.
-- If no provider key is configured or an AI call fails, the API falls back to defaults (category `general`, priority `medium`, estimated_duration `30`).
+- If `HUGGINGFACEHUB_API_TOKEN` is not configured or an inference call fails, the API falls back to defaults (category `general`, priority `medium`, estimated_duration `30`).
+- The default model is `MoritzLaurer/mDeBERTa-v3-base-mnli-xnli` and can be overridden with `HF_MODEL_ID`.
 - Rate limiting uses in-memory storage if `REDIS_URL` is not set. Use Redis for multi-instance deployments.
 - `TASK_CLASSIFICATION_MODE=async` uses Redis + RQ worker. Use `sync` for local debug and tests.
 
