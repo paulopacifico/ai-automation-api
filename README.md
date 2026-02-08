@@ -55,6 +55,10 @@ This project demonstrates a production-style backend with clean domain boundarie
 git clone https://github.com/paulopacifico/ai-automation-api.git
 cd ai-automation-api
 
+# Configure environment
+cp .env.example .env
+# Edit .env and set strong values for JWT_SECRET_KEY, POSTGRES_PASSWORD, REDIS_PASSWORD
+
 # Start the services
 docker compose up --build
 
@@ -83,17 +87,26 @@ uvicorn app.main:app --reload
 Environment variables (via shell or `.env`):
 
 ```env
+POSTGRES_USER=postgres
+POSTGRES_PASSWORD=change-this-postgres-password
+POSTGRES_DB=postgres
+POSTGRES_PORT=5432
 DATABASE_URL=postgresql://user:password@localhost:5432/ai_automation
-JWT_SECRET_KEY=change-me
+REDIS_PASSWORD=change-this-redis-password
+REDIS_PORT=6379
+REDIS_URL=redis://:change-this-redis-password@localhost:6379/0
+JWT_SECRET_KEY=
+JWT_ALGORITHM=HS256
 ACCESS_TOKEN_EXPIRE_MINUTES=30
 REFRESH_TOKEN_EXPIRE_DAYS=7
 RATE_LIMIT_ENABLED=true
 RATE_LIMIT_DEFAULT=100/minute
 RATE_LIMIT_AUTH=10/minute
-REDIS_URL=redis://localhost:6379/0
 TASK_CLASSIFICATION_MODE=async
 TASK_QUEUE_NAME=task-classification
 TASK_QUEUE_RETRY_MAX=3
+ENV=development
+API_PORT=8000
 HUGGINGFACEHUB_API_TOKEN=your_huggingface_token
 HF_MODEL_ID=MoritzLaurer/mDeBERTa-v3-base-mnli-xnli
 HF_TIMEOUT_SECONDS=20
@@ -102,7 +115,8 @@ HF_MAX_RETRIES=3
 
 Notes:
 
-- `JWT_SECRET_KEY` must be set to a strong value in production.
+- `JWT_SECRET_KEY` is required and must be strong outside development. Generate one with `openssl rand -base64 48`.
+- Docker Compose now binds API, PostgreSQL, and Redis ports to `127.0.0.1` by default.
 - If `HUGGINGFACEHUB_API_TOKEN` is not configured or an inference call fails, the API falls back to defaults (category `general`, priority `medium`, estimated_duration `30`).
 - The default model is `MoritzLaurer/mDeBERTa-v3-base-mnli-xnli` and can be overridden with `HF_MODEL_ID`.
 - Rate limiting uses in-memory storage if `REDIS_URL` is not set. Use Redis for multi-instance deployments.

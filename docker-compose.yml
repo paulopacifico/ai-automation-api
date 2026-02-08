@@ -1,27 +1,27 @@
+x-app-env: &app_env
+  DATABASE_URL: postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-postgres}
+  ENV: ${ENV:-development}
+  JWT_SECRET_KEY: ${JWT_SECRET_KEY}
+  JWT_ALGORITHM: ${JWT_ALGORITHM:-HS256}
+  REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379/0
+  TASK_CLASSIFICATION_MODE: ${TASK_CLASSIFICATION_MODE:-async}
+  TASK_QUEUE_NAME: ${TASK_QUEUE_NAME:-task-classification}
+  TASK_QUEUE_RETRY_MAX: ${TASK_QUEUE_RETRY_MAX:-3}
+
 services:
   api:
     build: .
-    environment:
-      - DATABASE_URL=postgresql://postgres:postgres@postgres:5432/postgres
-      - ENV=development
-      - JWT_SECRET_KEY=change-me
-      - REDIS_URL=redis://redis:6379/0
-      - TASK_CLASSIFICATION_MODE=async
+    environment: *app_env
     ports:
-      - "8000:8000"
+      - "127.0.0.1:${API_PORT:-8000}:8000"
     depends_on:
       - postgres
       - redis
 
   worker:
     build: .
-    command: rq worker task-classification --url redis://redis:6379/0
-    environment:
-      - DATABASE_URL=postgresql://postgres:postgres@postgres:5432/postgres
-      - ENV=development
-      - JWT_SECRET_KEY=change-me
-      - REDIS_URL=redis://redis:6379/0
-      - TASK_CLASSIFICATION_MODE=async
+    command: rq worker ${TASK_QUEUE_NAME:-task-classification} --url redis://:${REDIS_PASSWORD}@redis:6379/0
+    environment: *app_env
     depends_on:
       - postgres
       - redis
@@ -29,18 +29,19 @@ services:
   postgres:
     image: postgres:16
     environment:
-      - POSTGRES_USER=postgres
-      - POSTGRES_PASSWORD=postgres
-      - POSTGRES_DB=postgres
+      - POSTGRES_USER=${POSTGRES_USER:-postgres}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+      - POSTGRES_DB=${POSTGRES_DB:-postgres}
     ports:
-      - "5432:5432"
+      - "127.0.0.1:${POSTGRES_PORT:-5432}:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
 
   redis:
     image: redis:7
+    command: redis-server --appendonly yes --requirepass ${REDIS_PASSWORD}
     ports:
-      - "6379:6379"
+      - "127.0.0.1:${REDIS_PORT:-6379}:6379"
 
 volumes:
   postgres_data:

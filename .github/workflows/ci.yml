@@ -7,6 +7,13 @@ on:
 jobs:
   ci:
     runs-on: ubuntu-latest
+    env:
+      ENV: development
+      JWT_SECRET_KEY: ci-jwt-secret-key
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ci-postgres-password
+      POSTGRES_DB: postgres
+      REDIS_PASSWORD: ci-redis-password
 
     steps:
       - name: Checkout
@@ -21,7 +28,7 @@ jobs:
       - name: Wait for database
         run: |
           for i in {1..20}; do
-            if docker compose exec -T postgres pg_isready -U postgres; then
+            if docker compose exec -T postgres pg_isready -U "$POSTGRES_USER"; then
               exit 0
             fi
             sleep 1
@@ -36,7 +43,7 @@ jobs:
           docker compose run --rm -T
           -v ${{ github.workspace }}:/app
           -e PYTHONPATH=/app
-          -e DATABASE_URL=postgresql://postgres:postgres@postgres:5432/postgres
+          -e DATABASE_URL=postgresql://postgres:ci-postgres-password@postgres:5432/postgres
           api pytest -q
 
       - name: Lint

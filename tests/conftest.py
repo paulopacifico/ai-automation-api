@@ -5,6 +5,7 @@ os.environ.setdefault(
     "DATABASE_URL",
     "postgresql://postgres:postgres@localhost:5432/automation_test",
 )
+os.environ.setdefault("JWT_SECRET_KEY", "test-secret-key")
 os.environ.setdefault("RATE_LIMIT_ENABLED", "false")
 os.environ["TASK_CLASSIFICATION_MODE"] = "sync"
 
