@@ -102,6 +102,13 @@ REFRESH_TOKEN_EXPIRE_DAYS=7
 RATE_LIMIT_ENABLED=true
 RATE_LIMIT_DEFAULT=100/minute
 RATE_LIMIT_AUTH=10/minute
+TRUSTED_HOSTS=localhost,127.0.0.1
+CORS_ALLOWED_ORIGINS=
+CORS_ALLOW_CREDENTIALS=false
+HTTPS_REDIRECT_ENABLED=false
+SECURITY_HEADERS_ENABLED=true
+HSTS_MAX_AGE_SECONDS=31536000
+REFERRER_POLICY=strict-origin-when-cross-origin
 TASK_CLASSIFICATION_MODE=async
 TASK_QUEUE_NAME=task-classification
 TASK_QUEUE_RETRY_MAX=3
@@ -118,6 +125,7 @@ Notes:
 - `JWT_SECRET_KEY` is required and must be strong outside development. Generate one with `openssl rand -base64 48`.
 - `POSTGRES_PASSWORD`, `REDIS_PASSWORD`, and `JWT_SECRET_KEY` are mandatory for Docker Compose and fail fast when missing.
 - Docker Compose now binds API, PostgreSQL, and Redis ports to `127.0.0.1` by default.
+- Web security middleware is configurable via `TRUSTED_HOSTS`, `CORS_ALLOWED_ORIGINS`, and `HTTPS_REDIRECT_ENABLED` (recommended `true` in production behind correct proxy headers).
 - For production deployments, prefer managed Redis/PostgreSQL with TLS enabled (`rediss://` for Redis where supported).
 - If `HUGGINGFACEHUB_API_TOKEN` is not configured or an inference call fails, the API falls back to defaults (category `general`, priority `medium`, estimated_duration `30`).
 - The default model is `MoritzLaurer/mDeBERTa-v3-base-mnli-xnli` and can be overridden with `HF_MODEL_ID`.
