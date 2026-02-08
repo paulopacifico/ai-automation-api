@@ -88,13 +88,13 @@ Environment variables (via shell or `.env`):
 
 ```env
 POSTGRES_USER=postgres
-POSTGRES_PASSWORD=change-this-postgres-password
+POSTGRES_PASSWORD=
 POSTGRES_DB=postgres
 POSTGRES_PORT=5432
 DATABASE_URL=postgresql://user:password@localhost:5432/ai_automation
-REDIS_PASSWORD=change-this-redis-password
+REDIS_PASSWORD=
 REDIS_PORT=6379
-REDIS_URL=redis://:change-this-redis-password@localhost:6379/0
+REDIS_URL=redis://:your-redis-password@localhost:6379/0
 JWT_SECRET_KEY=
 JWT_ALGORITHM=HS256
 ACCESS_TOKEN_EXPIRE_MINUTES=30
@@ -116,7 +116,9 @@ HF_MAX_RETRIES=3
 Notes:
 
 - `JWT_SECRET_KEY` is required and must be strong outside development. Generate one with `openssl rand -base64 48`.
+- `POSTGRES_PASSWORD`, `REDIS_PASSWORD`, and `JWT_SECRET_KEY` are mandatory for Docker Compose and fail fast when missing.
 - Docker Compose now binds API, PostgreSQL, and Redis ports to `127.0.0.1` by default.
+- For production deployments, prefer managed Redis/PostgreSQL with TLS enabled (`rediss://` for Redis where supported).
 - If `HUGGINGFACEHUB_API_TOKEN` is not configured or an inference call fails, the API falls back to defaults (category `general`, priority `medium`, estimated_duration `30`).
 - The default model is `MoritzLaurer/mDeBERTa-v3-base-mnli-xnli` and can be overridden with `HF_MODEL_ID`.
 - Rate limiting uses in-memory storage if `REDIS_URL` is not set. Use Redis for multi-instance deployments.
