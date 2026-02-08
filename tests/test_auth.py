@@ -1,8 +1,11 @@
+from __future__ import annotations
+
 from fastapi.testclient import TestClient
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.models.user import User
+import app.services.auth_throttle as auth_throttle
 
 
 def _register_and_login(client: TestClient, email: str, password: str = "ChangeMe123") -> dict[str, str]:
@@ -38,3 +41,87 @@ def test_revoked_refresh_token_returns_401(client: TestClient) -> None:
 
     assert refresh.status_code == 401
     assert refresh.json()["detail"] == "Refresh token revoked"
+
+
+def test_login_progressive_backoff_and_reset(monkeypatch, client: TestClient) -> None:
+    auth_throttle.reset_failed_logins_for_tests()
+    current_time = {"value": 1_000_000}
+
+    monkeypatch.setattr(auth_throttle, "_now", lambda: current_time["value"])
+    monkeypatch.setattr(auth_throttle, "SOFT_THRESHOLD", 2)
+    monkeypatch.setattr(auth_throttle, "HARD_THRESHOLD", 4)
+    monkeypatch.setattr(auth_throttle, "BASE_DELAY_SECONDS", 10)
+    monkeypatch.setattr(auth_throttle, "MAX_DELAY_SECONDS", 30)
+    monkeypatch.setattr(auth_throttle, "BLOCK_SECONDS", 120)
+
+    register = client.post(
+        "/auth/register",
+        json={"email": "backoff-user@example.com", "password": "ChangeMe123"},
+    )
+    assert register.status_code == 201
+
+    for _ in range(2):
+        failed = client.post(
+            "/auth/login",
+            json={"email": "backoff-user@example.com", "password": "WrongPass123"},
+        )
+        assert failed.status_code == 401
+
+    throttled = client.post(
+        "/auth/login",
+        json={"email": "backoff-user@example.com", "password": "WrongPass123"},
+    )
+    assert throttled.status_code == 429
+    assert throttled.headers.get("Retry-After") == "10"
+
+    current_time["value"] += 11
+    successful = client.post(
+        "/auth/login",
+        json={"email": "backoff-user@example.com", "password": "ChangeMe123"},
+    )
+    assert successful.status_code == 200
+
+    post_reset = client.post(
+        "/auth/login",
+        json={"email": "backoff-user@example.com", "password": "WrongPass123"},
+    )
+    assert post_reset.status_code == 401
+
+
+def test_login_hard_block_after_repeated_failures(monkeypatch, client: TestClient) -> None:
+    auth_throttle.reset_failed_logins_for_tests()
+    current_time = {"value": 2_000_000}
+
+    monkeypatch.setattr(auth_throttle, "_now", lambda: current_time["value"])
+    monkeypatch.setattr(auth_throttle, "SOFT_THRESHOLD", 2)
+    monkeypatch.setattr(auth_throttle, "HARD_THRESHOLD", 3)
+    monkeypatch.setattr(auth_throttle, "BASE_DELAY_SECONDS", 10)
+    monkeypatch.setattr(auth_throttle, "MAX_DELAY_SECONDS", 30)
+    monkeypatch.setattr(auth_throttle, "BLOCK_SECONDS", 120)
+
+    register = client.post(
+        "/auth/register",
+        json={"email": "lock-user@example.com", "password": "ChangeMe123"},
+    )
+    assert register.status_code == 201
+
+    for _ in range(2):
+        failed = client.post(
+            "/auth/login",
+            json={"email": "lock-user@example.com", "password": "WrongPass123"},
+        )
+        assert failed.status_code == 401
+
+    current_time["value"] += 11
+    third_failure = client.post(
+        "/auth/login",
+        json={"email": "lock-user@example.com", "password": "WrongPass123"},
+    )
+    assert third_failure.status_code == 401
+
+    blocked = client.post(
+        "/auth/login",
+        json={"email": "lock-user@example.com", "password": "WrongPass123"},
+    )
+    assert blocked.status_code == 429
+    assert blocked.headers.get("Retry-After") == "120"

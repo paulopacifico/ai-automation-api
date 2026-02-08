@@ -3,6 +3,7 @@ from __future__ import annotations
 from datetime import datetime, timezone
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
+from slowapi.util import get_remote_address
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
@@ -27,6 +28,11 @@ from app.schemas.auth import (
     UserCreate,
     UserLogin,
     UserResponse,
+)
+from app.services.auth_throttle import (
+    check_login_allowed,
+    clear_failed_logins,
+    register_failed_login,
 )
 
 router = APIRouter(prefix="/auth", tags=["auth"])
@@ -67,12 +73,23 @@ def register(request: Request, payload: UserCreate, db: Session = Depends(get_db
 @router.post("/login", response_model=TokenResponse)
 @limiter.limit(settings.rate_limit_auth)
 def login(request: Request, payload: UserLogin, db: Session = Depends(get_db)) -> TokenResponse:
+    client_ip = get_remote_address(request)
+    throttle = check_login_allowed(client_ip, payload.email)
+    if not throttle.allowed:
+        raise HTTPException(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            detail=throttle.detail,
+            headers={"Retry-After": str(throttle.retry_after)},
+        )
+
     user = db.execute(select(User).where(User.email == payload.email)).scalar_one_or_none()
     if user is None or not verify_password(payload.password, user.hashed_password):
+        register_failed_login(client_ip, payload.email)
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid credentials")
     if not user.is_active:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="User is inactive")
 
+    clear_failed_logins(client_ip, payload.email)
     response, refresh_token, refresh_expiry = _token_response(user)
     token_entry = RefreshToken(
         user_id=user.id,
@@ -85,7 +102,8 @@ def login(request: Request, payload: UserLogin, db: Session = Depends(get_db)) -
 
 
 @router.post("/refresh", response_model=TokenResponse)
-def refresh(payload: RefreshRequest, db: Session = Depends(get_db)) -> TokenResponse:
+@limiter.limit("5/minute")
+def refresh(request: Request, payload: RefreshRequest, db: Session = Depends(get_db)) -> TokenResponse:
     try:
         decoded = decode_token(payload.refresh_token)
     except Exception:
@@ -124,7 +142,8 @@ def refresh(payload: RefreshRequest, db: Session = Depends(get_db)) -> TokenResp
 
 
 @router.post("/logout", status_code=status.HTTP_204_NO_CONTENT)
-def logout(payload: LogoutRequest, db: Session = Depends(get_db)) -> None:
+@limiter.limit("5/minute")
+def logout(request: Request, payload: LogoutRequest, db: Session = Depends(get_db)) -> None:
     token_hash = hash_token(payload.refresh_token)
     token_entry = db.execute(
         select(RefreshToken).where(RefreshToken.token_hash == token_hash)
